@@ -15,6 +15,7 @@ python3 -m vllm.entrypoints.openai.api_server \
   --max-model-len 32768 \
   --quantization gptq \
   --dtype auto \
+  --gpu-memory-utilization 0.82 \
   --enforce-eager \
   --trust-remote-code &
 
