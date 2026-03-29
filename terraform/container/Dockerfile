@@ -4,7 +4,7 @@ FROM ${BASE_IMAGE}
 
 RUN apt-get update && apt-get install git && \
     pip install fastapi uvicorn httpx transformers accelerate \
-        sentence-transformers "numpy<2"
+        sentence-transformers
 
 # Pre-bake embedding model weights into the image at build time.
 # This avoids a ~500 MB download on every container cold start.
