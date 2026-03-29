@@ -1,5 +1,6 @@
 ARG BASE_IMAGE
-FROM ${BASE_IMAGE}  # vllm/vllm-openai:v0.11.0
+# BASE_IMAGE = vllm/vllm-openai:v0.11.0
+FROM ${BASE_IMAGE}
 
 RUN apt-get update && apt-get install git && \
     pip install fastapi uvicorn httpx transformers accelerate \
