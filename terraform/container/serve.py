@@ -1,11 +1,19 @@
 """
-SageMaker ↔ vLLM adapter.
+SageMaker ↔ vLLM/embedding adapter.
 
 SageMaker sends inference requests to /invocations and health checks to /ping.
-vLLM serves an OpenAI-compatible API on port 8000. This adapter bridges the two.
+This adapter routes to one of two backends based on the "task" field:
 
-Input  (POST /invocations): {"inputs": "...", "parameters": {"max_new_tokens": ..., "stream": true/false, ...}}
-Output (POST /invocations): {"generated_text": "..."} or streaming text/plain tokens when stream=true
+  task="generate" → vLLM (port 8000), OpenAI-compatible chat completions
+  task="embed"    → embed_server (port 8001), sentence-transformers
+
+Input  (POST /invocations):
+  Generate: {"task": "generate", "inputs": "...", "parameters": {"max_new_tokens": ..., "stream": true/false, ...}}
+  Embed:    {"task": "embed", "texts": ["passage: text1", ...], "batch_size": 32}
+
+Output:
+  Generate: {"generated_text": "..."} or streaming text/plain tokens when stream=true
+  Embed:    {"embeddings": [[...], ...], "dim": 1024}
 """
 
 import json
@@ -19,27 +27,29 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 
 VLLM_BASE = "http://localhost:8000"
-MODEL_NAME = os.environ.get("HF_MODEL_ID", "swiss-ai/Apertus-70B-Instruct-2509")
+EMBED_BASE = "http://localhost:8001"
+MODEL_NAME = os.environ.get("HF_MODEL_ID", "Qwen/Qwen2.5-14B-Instruct-GPTQ-Int4")
 
 
-def _wait_for_vllm(timeout: int = 600, interval: int = 5) -> None:
+def _wait_for_server(url: str, name: str, timeout: int = 600, interval: int = 5) -> None:
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
-            r = httpx.get(f"{VLLM_BASE}/health", timeout=5)
+            r = httpx.get(url, timeout=5)
             if r.status_code == 200:
-                print("vLLM is ready.")
+                print(f"{name} is ready.")
                 return
         except Exception:
             pass
-        print("Waiting for vLLM...")
+        print(f"Waiting for {name}...")
         time.sleep(interval)
-    raise RuntimeError("vLLM did not become ready in time.")
+    raise RuntimeError(f"{name} did not become ready in time.")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    _wait_for_vllm()
+    _wait_for_server(f"{VLLM_BASE}/health", "vLLM")
+    _wait_for_server(f"{EMBED_BASE}/health", "embed_server")
     yield
 
 
@@ -53,6 +63,40 @@ def ping():
 
 @app.post("/invocations")
 async def invocations(body: dict):
+    task = body.get("task")
+
+    if task == "embed":
+        return await _handle_embed(body)
+    elif task == "generate":
+        return await _handle_generate(body)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing or unknown 'task' field: {task!r}. Expected 'generate' or 'embed'.",
+        )
+
+
+async def _handle_embed(body: dict) -> JSONResponse:
+    texts = body.get("texts")
+    batch_size = body.get("batch_size", 32)
+
+    if not texts:
+        raise HTTPException(status_code=400, detail="'texts' field is required for task='embed'")
+
+    try:
+        r = httpx.post(
+            f"{EMBED_BASE}/embed",
+            json={"texts": texts, "batch_size": batch_size},
+            timeout=120,
+        )
+        r.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    return JSONResponse(r.json())
+
+
+async def _handle_generate(body: dict):
     prompt = body.get("inputs", "")
     params = body.get("parameters", {})
 

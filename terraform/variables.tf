@@ -1,16 +1,16 @@
 variable "aws_region" {
   description = "AWS region for deployment"
-  default     = "us-east-1"
+  default     = "eu-central-1"
 }
 
 variable "project_name" {
   description = "Project name prefix for resources"
-  default     = "apertus-llm"
+  default     = "qwen25-14b"
 }
 
 variable "instance_type" {
   description = "SageMaker instance type"
-  default     = "ml.g5.48xlarge"
+  default     = "ml.g5.xlarge"
 }
 
 variable "image_tag" {

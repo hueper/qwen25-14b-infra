@@ -59,7 +59,7 @@ resource "aws_iam_role_policy" "github_actions_ecr" {
           "ecr:UploadLayerPart",
           "ecr:CompleteLayerUpload"
         ]
-        Resource = aws_ecr_repository.apertus_inference.arn
+        Resource = aws_ecr_repository.qwen25_inference.arn
       }
     ]
   })

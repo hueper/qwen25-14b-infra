@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: eu-central-1
 
 jobs:
   build-and-push:
@@ -30,7 +30,7 @@ jobs:
       - name: Build and push
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
-          REPO: apertus-llm-inference
+          REPO: qwen25-14b-inference
           TAG: ${{ github.sha }}
           BASE_IMAGE: vllm/vllm-openai:v0.11.0
         run: |
