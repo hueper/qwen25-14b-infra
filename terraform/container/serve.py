@@ -84,11 +84,12 @@ async def _handle_embed(body: dict) -> JSONResponse:
         raise HTTPException(status_code=400, detail="'texts' field is required for task='embed'")
 
     try:
-        r = httpx.post(
-            f"{EMBED_BASE}/embed",
-            json={"texts": texts, "batch_size": batch_size},
-            timeout=120,
-        )
+        async with httpx.AsyncClient() as client:
+            r = await client.post(
+                f"{EMBED_BASE}/embed",
+                json={"texts": texts, "batch_size": batch_size},
+                timeout=120,
+            )
         r.raise_for_status()
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=502, detail=str(e))
@@ -153,11 +154,12 @@ async def _handle_generate(body: dict):
         payload["stop"] = stop
 
     try:
-        r = httpx.post(
-            f"{VLLM_BASE}/v1/chat/completions",
-            json=payload,
-            timeout=120,
-        )
+        async with httpx.AsyncClient() as client:
+            r = await client.post(
+                f"{VLLM_BASE}/v1/chat/completions",
+                json=payload,
+                timeout=300,
+            )
         r.raise_for_status()
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=502, detail=str(e))
