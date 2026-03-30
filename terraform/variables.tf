@@ -1,6 +1,6 @@
 variable "aws_region" {
   description = "AWS region for deployment"
-  default     = "eu-central-1"
+  default     = "us-east-1"
 }
 
 variable "project_name" {
@@ -20,6 +20,7 @@ variable "image_tag" {
 
 variable "github_repo" {
   description = "GitHub repository (org/repo) for OIDC trust policy"
+  default = "hueper/qwen25-14b-infra"
   type        = string
 }
 
